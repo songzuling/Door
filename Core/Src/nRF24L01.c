@@ -3,10 +3,14 @@
 
 extern SPI_HandleTypeDef hspi1;
 
+uint8_t pdState = 0;
 void nRF24L01_Init(void)
 {
-  Delay(20);
-  nRF24L01_EnterPowerDownMode();
+  CE_L;
+  CSN_H;
+  Delay(15);
+  nRF24L01_ResetRxDs();
+  pdState = nRF24L01_EnterPowerDownMode();
   nRF24L01_EnterRxMode();  
 }
 
@@ -24,8 +28,8 @@ static void SPI_Delay(int n)
 }
 
 /*
- * 进入掉电模式
- */
+* 进入掉电模式
+*/
 uint8_t nRF24L01_EnterPowerDownMode(void)
 { 
   uint8_t n = 10;
@@ -37,7 +41,7 @@ uint8_t nRF24L01_EnterPowerDownMode(void)
     nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_CONFIG, &result, 1, 20);
     if(result==data)
     {
-        return 1;
+      return 1;
     }    
   }
   return 0;  
@@ -45,8 +49,8 @@ uint8_t nRF24L01_EnterPowerDownMode(void)
 
 
 /*
- * 进入待机模式1
- */
+* 进入待机模式1
+*/
 
 uint8_t nRF24L01_EnterStandbyIMode(void)
 {  
@@ -57,24 +61,21 @@ uint8_t nRF24L01_EnterStandbyIMode(void)
 
 
 /*
- * 进入待机模式2
- */
+* 进入待机模式2
+*/
 uint8_t nRF24L01_EnterStandbyIIMode(void)
 {
   return 1;
 }
 
 /*
- * 进入接收模式
- */
+* 进入接收模式
+*/
 uint8_t nRF24L01_EnterRxMode(void)
 {  
   CE_L;
   static uint8_t testResult[10];
-  uint8_t data = 0; 
-  data = 0x7B;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);     /**/  
-  nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_CONFIG, testResult, 1, 20);
+  uint8_t data = 0;  
   data = 0x00;
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  /*关闭通道*/
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult, 1, 20);
@@ -82,7 +83,7 @@ uint8_t nRF24L01_EnterRxMode(void)
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  /*使能pipe0*/
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult, 1, 20);
   data = 0x00;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);      /*关闭自动回复*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);      /*自动回复*/
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_AA, testResult, 1, 20);
   data = 5;
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_PW_P0, &data, 1);   /*配置接受数据的宽度*/
@@ -96,6 +97,11 @@ uint8_t nRF24L01_EnterRxMode(void)
   data = 0x0F;
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);   /**/
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_RF_SETUP, testResult, 1, 20);
+  data = 0;
+  nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
+  data = 0x0B;
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);     /**/  
+  nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_CONFIG, testResult, 1, 20);  
   CE_H;
   SPI_Delay(300); /*~180us*/
   
@@ -104,8 +110,8 @@ uint8_t nRF24L01_EnterRxMode(void)
 }
 
 /*
- * 进入发射模式
- */
+* 进入发射模式
+*/
 uint8_t nRF24L01_EnterTxMode(void)
 {
   
@@ -135,7 +141,7 @@ uint8_t nRF24L01_EnterTxMode(void)
   
   data = 0x0E;
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);      /**/
-
+  
   CE_H;
   return 1;
 }
@@ -161,18 +167,25 @@ void nRF24L01_ResetTxDs(void)
   return ;
 }
 
-
+uint8_t testDs = 0;
+uint8_t testDsState = 0;
 void nRF24L01_ResetRxDs(void)
 {
-  uint8_t data = 0x4E;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_STATUS, &data, 1);     
+  uint8_t data = 0;
+  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  testDs = data;  
+  data |= 0x7E;
+  testDs = data;
+  testDsState = nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_STATUS, &data, 1);     
+  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  testDs = data;  
   return ;
 }
 /*
- *
- *
- *
- */
+*
+*
+*
+*/
 uint8_t nRF24L01_Transmit(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size)
 {  
   uint8_t dat = Cmd + Reg;
@@ -182,9 +195,12 @@ uint8_t nRF24L01_Transmit(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Siz
   {
     return 0;
   }
-  if(HAL_OK != HAL_SPI_Transmit(&hspi1, pData, Size, 10))
+  if(Size > 0)
   {
-    return 0;
+    if(HAL_OK != HAL_SPI_Transmit(&hspi1, pData, Size, 10))
+    {
+      return 0;
+    }
   }
   CSN_H;
   return 1;  
@@ -200,9 +216,12 @@ uint8_t nRF24L01_Receive(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size
   {
     return 0;
   }
-  if(HAL_OK != HAL_SPI_Receive(&hspi1, pData, Size, Timeout) )
+  if(Size > 0)
   {
-    return 0;
+    if(HAL_OK != HAL_SPI_Receive(&hspi1, pData, Size, Timeout) )
+    {
+      return 0;
+    }
   }
   CSN_H;
   return 1;
@@ -218,11 +237,78 @@ void Delay(uint32_t ms)
   return;
 }
 
-
-
+uint8_t rxData[5];
+int irqCnt = 0;
 int testRxCnt = 0;
+uint8_t isGetNewData = 0;
+uint8_t isIrq = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  testRxCnt++;
+{  
+  isIrq = 1;
+  irqCnt++;
 }
+
+int testRxCnt1 = 0;
+int testRxCnt2 = 0;
+
+void WaiteForData(void)
+{
+
+  uint32_t tick = HAL_GetTick();
+  while(0==isGetNewData)
+  {
+    if(isIrq)
+    {
+      isIrq = 0;
+      Delay(1);
+      testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
+      if(testDs&0x40)//> 0)
+      {
+        nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);               
+        testRxCnt++; 
+        isGetNewData = 1;        
+      }  
+      if(testDs&0x20)
+      {
+        testRxCnt1++;
+        isGetNewData = 1;     
+      }
+      if(testDs&0x10)
+      {
+        testRxCnt2++;
+        isGetNewData = 1;     
+      }
+//      else
+//      {
+        uint8_t data = 0;
+//        nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
+//      }
+//      nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);           
+      nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
+      nRF24L01_ResetRxDs();
+    }
+    if(HAL_GetTick() - tick > 100 )
+    {
+      nRF24L01_ResetRxDs();
+      break;
+    }
+  };
+  isGetNewData = 0;  
+  
+  
+//  static uint8_t rxData[5];
+//  testDs = 0;
+//  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
+//  nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);       
+//  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
+////  if(testDs)
+////  {
+////    testRxCnt++; 
+////    isGetNewData = 1;        
+////  }  
+//  nRF24L01_ResetRxDs();
+}
+
+
+
 

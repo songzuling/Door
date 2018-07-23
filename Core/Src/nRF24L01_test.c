@@ -13,12 +13,14 @@ static uint8_t EnterPowerDownMode(void);
 static uint8_t nRF24L01_Transmit1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size);
 static uint8_t nRF24L01_Receive1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size, uint32_t Timeout);
 
+uint8_t pdState1 = 0;
+
 void nRF24L01_Init1(void)
-{
-  CE_L1;
-  CSN_H1;
-  Delay(50); //上电10.3ms之后进入powerdown模式  
-  EnterPowerDownMode();
+{  
+  CE1_L;
+  CSN1_H;
+  Delay(20); //上电10.3ms之后进入powerdown模式  
+  pdState1 = EnterPowerDownMode();
   //  Delay(10);
   //  EnterStandbyIMode();
   //  Delay(10);
@@ -43,12 +45,12 @@ static void SPI_Delay(int n)
 int txCnt = 0;
 void TestSend()
 {  
-  CE_L1;  
+  CE1_L;  
   txCnt++;
-  static uint8_t tx_buf[10] = "hell0";  
+  static uint8_t tx_buf[10] ;  
   nRF24L01_Transmit1(nRF24L01_W_TX_PAYLOAD, 0, tx_buf, 5);     
 
-  CE_H1;
+  CE1_H;
   SPI_Delay(500);  
   tx_buf[4]++;
   return;
@@ -82,12 +84,12 @@ static uint8_t EnterPowerDownMode(void)
 
 static uint8_t EnterStandbyIMode(void)
 {  
-  CE_L1;
+  CE1_L;
   uint8_t data = 0x00;        
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_CONFIG, &data, 1, 10);
   data |= 0x02;
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1); 
-  CE_H1;
+  CE1_H;
   if(0 == (data & 0x02))
   {
     return 0;
@@ -114,7 +116,7 @@ static uint8_t EnterRxMode(void)
   //  该地址作为测试用而已 ///////////////////////
   uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1};
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5);  /*写接收地址*/  
-  data = 0x01;
+  data = 0x00;
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);      /*自动回复*/
   data = 0x01;
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  /*使能pipe0*/
@@ -126,7 +128,7 @@ static uint8_t EnterRxMode(void)
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);   /**/
   data = 0x0F;
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);     /**/  
-  CE_L1;
+  CE1_L;
   return 1;
 }
 
@@ -162,7 +164,11 @@ static uint8_t EnterTxMode(void)
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_TX_ADDR, testResult1, 5, 20);
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5); /*写接收地址*/
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_RX_ADDR_P0, testResult1, 5, 20);
-  CE_H1;
+  
+  data = 0;
+  nRF24L01_Transmit1(nRF24L01_FLUSH_TX, 0, &data, 0);      /**/
+  
+  CE1_H;
   SPI_Delay(200);
   return 1;
 }
@@ -175,35 +181,41 @@ static uint8_t EnterTxMode(void)
 static uint8_t nRF24L01_Transmit1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size)
 {  
   uint8_t dat = Cmd + Reg;
-  CSN_H1;
-  CSN_L1;
+  CSN1_H;
+  CSN1_L;
   if(HAL_OK != HAL_SPI_Transmit(&hspi2, &dat, 1, 10))
   {
     return 0;
   }
-  if(HAL_OK != HAL_SPI_Transmit(&hspi2, pData, Size, 10))
+  if(Size > 0)
   {
-    return 0;
+    if(HAL_OK != HAL_SPI_Transmit(&hspi2, pData, Size, 10))
+    {
+      return 0;
+    }
   }
-  CSN_H1;
+  CSN1_H;
   return 1;  
 }
 
 
 static uint8_t nRF24L01_Receive1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size, uint32_t Timeout)
 {
-  CSN_H1;
-  CSN_L1;
+  CSN1_H;
+  CSN1_L;
   uint8_t dat = Cmd + Reg;
   if(HAL_OK != HAL_SPI_Transmit(&hspi2, &dat, 1, 10))
   {
     return 0;
   }
-  if(HAL_OK != HAL_SPI_Receive(&hspi2, pData, Size, Timeout) )
+  if(Size > 0)
   {
-    return 0;
+    if(HAL_OK != HAL_SPI_Receive(&hspi2, pData, Size, Timeout) )
+    {
+      return 0;
+    }
   }
-  CSN_H1;
+  CSN1_H;
   return 1;
 }
 
