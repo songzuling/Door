@@ -7,11 +7,13 @@ static uint8_t testData = 0;
 static void Delay(uint32_t ms);
 static uint8_t EnterRxMode(void);
 static uint8_t EnterTxMode(void);
+static uint8_t nRF24L01_GetStatus(void);
 static uint8_t EnterStandbyIMode(void);
 static uint8_t EnterStandbyIIMode(void);
 static uint8_t EnterPowerDownMode(void);
 static uint8_t nRF24L01_Transmit1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size);
 static uint8_t nRF24L01_Receive1(uint8_t Cmd, uint8_t Reg, uint8_t* pData, uint32_t Size, uint32_t Timeout);
+static void nRF24L01_ResetTxDs(void);
 
 uint8_t pdState1 = 0;
 
@@ -19,12 +21,14 @@ void nRF24L01_Init1(void)
 {  
   CE1_L;
   CSN1_H;
-  Delay(20); //上电10.3ms之后进入powerdown模式  
+  Delay(50); //上电10.3ms之后进入powerdown模式  
   pdState1 = EnterPowerDownMode();
+  Delay(50);
   //  Delay(10);
   //  EnterStandbyIMode();
   //  Delay(10);
   EnterTxMode();
+  Delay(50);
 }
 
 
@@ -46,14 +50,24 @@ int txCnt = 0;
 void TestSend()
 {  
   CE1_L;  
-  txCnt++;
+  txCnt++;  
   static uint8_t tx_buf[10] ;  
-  nRF24L01_Transmit1(nRF24L01_W_TX_PAYLOAD, 0, tx_buf, 5);     
-
-  CE1_H;
-  SPI_Delay(500);  
   tx_buf[4]++;
+  nRF24L01_Transmit1(nRF24L01_W_TX_PAYLOAD, 0, tx_buf, 5);     
+  CE1_H;
+  SPI_Delay(600);    
   return;
+}
+
+void TestGetTxStatus(void)
+{
+  static uint8_t txStatus = 0;
+  
+  txStatus = nRF24L01_GetStatus();
+  if(txStatus&0x30)
+  {
+    nRF24L01_ResetTxDs();
+  }
 }
 
 /*
@@ -140,39 +154,58 @@ static uint8_t EnterTxMode(void)
 {  
   uint8_t data = 0;
   static uint8_t testResult1[10];
-  data = 0x00;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);   /*关闭pipe0*/  
+  data = 0x00;/*关闭pipe0*/  
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);   
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult1, 1, 20);
-  data = 0x01;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);   /*使能pipe0*/  
+  data = 0x01;/*使能pipe0*/  
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);   
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult1, 1, 20);
-  data = 0x00;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);       /*关闭自动回复*/  
+  data = 0x00; /*关闭自动回复*/  
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);      
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_EN_AA, testResult1, 1, 20);
-  data = 10;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RF_CH, &data, 1);       /*配置通道*/  
+  data = 10; /*配置通道*/  
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RF_CH, &data, 1);      
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_RF_CH, testResult1, 1, 20);
-  data = 0x0F;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);    /**/  
+  data = 0x0F;/*功率和速率*/
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);    
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_RF_SETUP, testResult1, 1, 20);
+  data = 0x1F;/*自动重发，500us延时，15次最大自动重发次数*/
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_SETUP_RETR, &data, 1); 
+  nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_SETUP_RETR, testResult1, 1, 20);
   data = 0x7A;
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);      /**/
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);        
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_CONFIG, testResult1, 1, 20);
-  
-  uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1}; 
-  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_TX_ADDR, addr, 5);    /*写发送地址*/
+
+  uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1}; /*写发送地址*/
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_TX_ADDR, addr, 5);    
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_TX_ADDR, testResult1, 5, 20);
   nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5); /*写接收地址*/
   nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_RX_ADDR_P0, testResult1, 5, 20);
   
   data = 0;
-  nRF24L01_Transmit1(nRF24L01_FLUSH_TX, 0, &data, 0);      /**/
+  nRF24L01_Transmit1(nRF24L01_FLUSH_TX, 0, &data, 0);     
   
   CE1_H;
   SPI_Delay(200);
   return 1;
 }
 
+static uint8_t nRF24L01_GetStatus(void)
+{
+  uint8_t data = 0;
+  nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  return data;
+}
+
+static void nRF24L01_ResetTxDs(void)
+{
+  uint8_t data = 0;
+  nRF24L01_Receive1(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  data |= 0x70; 
+  nRF24L01_Transmit1(nRF24L01_W_REGISTER, nRF24L01_STATUS, &data, 1);     
+  return ;
+}
+  
 /*
  *
  *

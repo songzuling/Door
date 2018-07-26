@@ -8,10 +8,11 @@ void nRF24L01_Init(void)
 {
   CE_L;
   CSN_H;
-  Delay(15);
-  nRF24L01_ResetRxDs();
-  pdState = nRF24L01_EnterPowerDownMode();
+  Delay(50);
+  pdState = nRF24L01_EnterPowerDownMode();  
+  Delay(50);
   nRF24L01_EnterRxMode();  
+  Delay(50);
 }
 
 //72MHz while里面1个asm("nop");
@@ -76,32 +77,33 @@ uint8_t nRF24L01_EnterRxMode(void)
   CE_L;
   static uint8_t testResult[10];
   uint8_t data = 0;  
-  data = 0x00;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  /*关闭通道*/
+  data = 0x00; /*关闭通道*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1); 
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult, 1, 20);
-  data = 0x01;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  /*使能pipe0*/
+  data = 0x01;/*使能pipe0*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_RXADDR, &data, 1);  
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_RXADDR, testResult, 1, 20);
-  data = 0x00;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);      /*自动回复*/
+  data = 0x00; /*关闭自动回复*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);     
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_EN_AA, testResult, 1, 20);
-  data = 5;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_PW_P0, &data, 1);   /*配置接受数据的宽度*/
+  data = 5;  /*配置接受数据的宽度*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_PW_P0, &data, 1); 
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_RX_PW_P0, testResult, 1, 20);
-  uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1};
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5);  /*写接收地址*/  
+  uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1}; /*写接收地址*/  
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5); 
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_RX_ADDR_P0, testResult, 5, 20);
-  data = 10;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RF_CH, &data, 1);      /*配置通道*/
+  data = 10;  /*配置通道*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RF_CH, &data, 1);    
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_RF_CH, testResult, 1, 20);
-  data = 0x0F;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);   /**/
+  data = 0x0F;/*功率和速率*/
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RF_SETUP, &data, 1);   
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_RF_SETUP, testResult, 1, 20);
-  data = 0;
-  nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
-  data = 0x0B;
-  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);     /**/  
+  data = 0;/*清空接受FIFO*/
+  nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0); 
+  data = 0x0B; /**/  
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_CONFIG, &data, 1);    
   nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_CONFIG, testResult, 1, 20);  
+  
   CE_H;
   SPI_Delay(300); /*~180us*/
   
@@ -119,12 +121,12 @@ uint8_t nRF24L01_EnterTxMode(void)
   uint8_t data = 0;
   //  该地址作为测试用而已 ///////////////////////
   uint8_t addr[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xF1};
-  uint8_t tx_buf[5] = {123, 456, 0x02, 0x03, 0x09};
+  //  uint8_t tx_buf[5] = {123, 456, 0x02, 0x03, 0x09};
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_TX_ADDR, addr, 5);    /*写发送地址*/
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_RX_ADDR_P0, addr, 5); /*写接收地址*/
-  nRF24L01_Transmit(nRF24L01_W_TX_PAYLOAD, 0, tx_buf, 5); 
+  //  nRF24L01_Transmit(nRF24L01_W_TX_PAYLOAD, 0, tx_buf, 5); 
   
-  data = 0x01;
+  data = 0x00;
   nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_EN_AA, &data, 1);       /*自动回复*/
   
   data = 0x01;
@@ -167,20 +169,23 @@ void nRF24L01_ResetTxDs(void)
   return ;
 }
 
-uint8_t testDs = 0;
-uint8_t testDsState = 0;
 void nRF24L01_ResetRxDs(void)
 {
   uint8_t data = 0;
-  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
-  testDs = data;  
-  data |= 0x7E;
-  testDs = data;
-  testDsState = nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_STATUS, &data, 1);     
-  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
-  testDs = data;  
+  nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  data |= 0x7E; 
+  nRF24L01_Transmit(nRF24L01_W_REGISTER, nRF24L01_STATUS, &data, 1);     
   return ;
 }
+
+
+uint8_t nRF24L01_GetStatus(void)
+{
+  uint8_t data = 0;
+  nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+  return data;
+}
+
 /*
 *
 *
@@ -239,74 +244,117 @@ void Delay(uint32_t ms)
 
 uint8_t rxData[5];
 int irqCnt = 0;
-int testRxCnt = 0;
+
 uint8_t isGetNewData = 0;
 uint8_t isIrq = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {  
-  isIrq = 1;
+  isIrq = 1;  
   irqCnt++;
 }
 
+int testRxCnt = 0;
 int testRxCnt1 = 0;
 int testRxCnt2 = 0;
+int testRxCnt3 = 0;
 
 void WaiteForData(void)
 {
-
+  
   uint32_t tick = HAL_GetTick();
-  while(0==isGetNewData)
+  //  while(0==isGetNewData)
+  //  {    
+  if(isIrq)
   {
-    if(isIrq)
+    isIrq = 0;
+    uint8_t data = 0;
+    SPI_Delay(1500);    
+    nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &data, 1, 10); 
+    if(data&0x40)
     {
-      isIrq = 0;
-      Delay(1);
-      testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
-      if(testDs&0x40)//> 0)
-      {
-        nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);               
-        testRxCnt++; 
-        isGetNewData = 1;        
-      }  
-      if(testDs&0x20)
-      {
-        testRxCnt1++;
-        isGetNewData = 1;     
-      }
-      if(testDs&0x10)
-      {
-        testRxCnt2++;
-        isGetNewData = 1;     
-      }
-//      else
-//      {
-        uint8_t data = 0;
-//        nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
-//      }
-//      nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);           
-      nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
-      nRF24L01_ResetRxDs();
-    }
-    if(HAL_GetTick() - tick > 100 )
+      nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);    
+      //nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);   
+      testRxCnt++; 
+      //isGetNewData = 1;        
+    }   
+    else if(data&0x20)
     {
-      nRF24L01_ResetRxDs();
-      break;
+      testRxCnt1++;
+      //isGetNewData = 1;     
     }
-  };
-  isGetNewData = 0;  
+    else if(data&0x10)
+    {
+      testRxCnt2++;
+      //isGetNewData = 1;     
+    }
+    else
+    {      
+      static uint8_t irq3Status = 0;
+      irq3Status = data;
+      testRxCnt3++;
+    }        
+    nRF24L01_ResetRxDs();
+    //nRF24L01_ResetRxDs();
+    //      else if(testDs&0x20)
+    //      {
+    //        testRxCnt1++;
+    //        isGetNewData = 1;     
+    //      }
+    //      else if(testDs&0x10)
+    //      {
+    //        testRxCnt2++;
+    //        isGetNewData = 1;     
+    //      }
+    //      else
+    //      {
+    //      
+    //      }
+    //      else
+    //      {
+    //        uint8_t data = 0;
+    //        nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
+    //      }
+    //      nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);           
+    //      nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);      /**/
+    //      nRF24L01_ResetRxDs();
+    //    }
+    //    if(HAL_GetTick() - tick > 50 )
+    //    {
+    //      //nRF24L01_ResetRxDs();
+    //      break;
+    //    }
+    //    Delay(1);
+    //    nRF24L01_ResetRxDs();
+  }
+  static uint8_t rxStatus = 0;
+  rxStatus = nRF24L01_GetStatus();
+  uint8_t data = 0;
+  if(rxStatus&0x70)
+  {
+    nRF24L01_ResetRxDs();
+    nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);   
+  }
+  if(rxStatus==0)
+  {
+    nRF24L01_ResetRxDs();
+    nRF24L01_Transmit(nRF24L01_FLUSH_RX, 0, &data, 0);   
+  }
+  //  SPI_Delay(100);
+  //  nRF24L01_ResetRxDs();
+  //  isGetNewData = 0;  
   
   
-//  static uint8_t rxData[5];
-//  testDs = 0;
-//  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
-//  nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);       
-//  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
-////  if(testDs)
-////  {
-////    testRxCnt++; 
-////    isGetNewData = 1;        
-////  }  
-//  nRF24L01_ResetRxDs();
+  //  static uint8_t rxData[5];
+  //  testDs = 0;
+  //  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
+  //  nRF24L01_Receive(nRF24L01_R_RX_PAYLOAD, 0, rxData, 5, 50);       
+  //  testDsState = nRF24L01_Receive(nRF24L01_R_REGISTER, nRF24L01_STATUS, &testDs, 1, 10); 
+  ////  if(testDs)
+  ////  {
+  ////    testRxCnt++; 
+  ////    isGetNewData = 1;        
+  ////  }  
+  //  nRF24L01_ResetRxDs();
 }
 
 
